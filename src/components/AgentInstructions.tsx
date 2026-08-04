@@ -6,6 +6,7 @@ export default function AgentInstructions({ onBack, tenantId = "" }: { onBack: (
 
   const getPythonCode = () => {
     const serverUrl = localStorage.getItem('agent_server_url') || "http://localhost:3000";
+    const idleThreshold = localStorage.getItem('agent_idle_threshold') || "10";
     return `import time
 import socketio
 import win32api
@@ -23,7 +24,7 @@ MACHINE_NAME = os.getenv("MACHINE_NAME", socket.gethostname())
 SERVER_URL = os.getenv("SERVER_URL", "${serverUrl}")
 
 # Tempo de inatividade em segundos para disparar alerta
-IDLE_THRESHOLD_SECONDS = 10 
+IDLE_THRESHOLD_SECONDS = ${idleThreshold}
 # ==========================================
 
 sio = socketio.Client()
