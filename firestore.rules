@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && request.auth.token.email == 'admin@admin.com'; }
+
+    // Check if user has access to tenant
+    function hasTenantAccess(tenantId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/tenant_access/$(request.auth.uid + "_" + tenantId));
+    }
+
+    // Agent entity validation
+    function isValidAgent(data) {
+      return data.keys().hasAll(['tenantId', 'machineName', 'status', 'activeWindow', 'lastUpdate']) &&
+             data.keys().size() == 5 &&
+             data.tenantId is string && data.tenantId.size() <= 100 &&
+             data.machineName is string && data.machineName.size() <= 100 &&
+             data.status in ['online', 'offline', 'idle'] &&
+             data.activeWindow is string && data.activeWindow.size() <= 500 &&
+             data.lastUpdate is number;
+    }
+
+    match /agents/{agentId} {
+      allow read: if isAdmin() || (isSignedIn() && hasTenantAccess(resource.data.tenantId));
+      allow delete: if isAdmin();
+      // Allow unauthenticated writes from the Node.js server
+      allow create: if isValidId(agentId) && isValidAgent(incoming());
+      allow update: if isValidId(agentId) && isValidAgent(incoming()) && incoming().tenantId == existing().tenantId;
+    }
+
+    // Event entity validation
+    function isValidEvent(data) {
+      return data.keys().hasAll(['tenantId', 'machineName', 'type', 'timestamp']) &&
+             data.tenantId is string && data.tenantId.size() <= 100 &&
+             data.machineName is string && data.machineName.size() <= 100 &&
+             data.type in ['WINDOW_CHANGED', 'ALERT_IDLE_OR_SCREEN_OFF', 'ACTIVITY_RESUMED'] &&
+             data.timestamp is number &&
+             (
+               !('windowTitle' in data) || (data.windowTitle is string && data.windowTitle.size() <= 500)
+             ) &&
+             (
+               !('idleTimeSeconds' in data) || (data.idleTimeSeconds is number)
+             );
+    }
+
+    match /events/{eventId} {
+      allow read: if isAdmin() || (isSignedIn() && hasTenantAccess(resource.data.tenantId));
+      allow delete: if isAdmin();
+      // Allow unauthenticated writes from the Node.js server
+      allow create: if isValidId(eventId) && isValidEvent(incoming());
+    }
+
+    // Tenant Access
+    match /tenant_access/{accessId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      // Allow users to join a tenant for the MVP demo
+      allow create, update: if isSignedIn() && 
+                    isValidId(accessId) && 
+                    incoming().keys().hasAll(['userId', 'tenantId']) && 
+                    incoming().keys().size() == 2 &&
+                    incoming().userId == request.auth.uid && 
+                    incoming().tenantId is string && incoming().tenantId.size() <= 100 &&
+                    accessId == request.auth.uid + "_" + incoming().tenantId;
+      allow delete: if isAdmin(); 
+    }
+  }
+}

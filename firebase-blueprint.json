@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "agent": {
+      "title": "Agent",
+      "description": "Represents a monitored machine",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string", "maxLength": 100 },
+        "machineName": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["online", "offline", "idle"] },
+        "activeWindow": { "type": "string", "maxLength": 500 },
+        "lastUpdate": { "type": "number" }
+      },
+      "required": ["tenantId", "machineName", "status", "activeWindow", "lastUpdate"]
+    },
+    "event": {
+      "title": "Event",
+      "description": "Represents an event from an agent",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string", "maxLength": 100 },
+        "machineName": { "type": "string", "maxLength": 100 },
+        "type": { "type": "string", "enum": ["WINDOW_CHANGED", "ALERT_IDLE_OR_SCREEN_OFF", "ACTIVITY_RESUMED"] },
+        "windowTitle": { "type": "string", "maxLength": 500 },
+        "idleTimeSeconds": { "type": "number" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["tenantId", "machineName", "type", "timestamp"]
+    },
+    "tenant_access": {
+      "title": "Tenant Access",
+      "description": "Maps a user to a tenant",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "tenantId": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["userId", "tenantId"]
+    }
+  },
+  "firestore": {
+    "/agents/{agentId}": {
+      "schema": { "$ref": "#/entities/agent" },
+      "description": "Current status of agents"
+    },
+    "/events/{eventId}": {
+      "schema": { "$ref": "#/entities/event" },
+      "description": "History of events"
+    },
+    "/tenant_access/{accessId}": {
+      "schema": { "$ref": "#/entities/tenant_access" },
+      "description": "User access mapping to tenants"
+    }
+  }
+}
