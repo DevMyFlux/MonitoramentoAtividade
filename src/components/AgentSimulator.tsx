@@ -41,9 +41,10 @@ export default function AgentSimulator({ tenantId }: { tenantId: string }) {
 
   const simulateIdle = () => {
     if (!socket) return;
+    const threshold = parseInt(localStorage.getItem('agent_idle_threshold') || "10", 10);
     socket.emit('ALERT_IDLE_OR_SCREEN_OFF', {
       machineName,
-      idleTimeSeconds: 425, // ~7 minutos
+      idleTimeSeconds: threshold + 1, // um segundo a mais que o threshold configurado
       timestamp: Date.now() / 1000
     });
   };
@@ -108,7 +109,7 @@ export default function AgentSimulator({ tenantId }: { tenantId: string }) {
               className="bg-white border border-amber-100 hover:border-amber-500 hover:text-amber-700 px-4 py-3 rounded-lg flex items-center justify-center transition-colors shadow-sm text-sm font-medium text-slate-700"
             >
               <AlertTriangle size={16} className="mr-2 text-amber-500" />
-              Disparar Inatividade (7 min)
+              Disparar Inatividade (Exceder Limite)
             </button>
   
             <button 
